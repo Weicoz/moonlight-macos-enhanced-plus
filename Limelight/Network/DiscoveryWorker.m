@@ -20,6 +20,7 @@
 @implementation DiscoveryWorker {
     TemporaryHost* _host;
     NSString* _uniqueId;
+    dispatch_semaphore_t _pollWake;
 }
 
 static const float POLL_RATE = 2.0f; // Poll every 2 seconds
@@ -41,6 +42,7 @@ static dispatch_once_t gUnpairedObservationOnceToken;
     self = [super init];
     _host = host;
     _uniqueId = uniqueId;
+    _pollWake = dispatch_semaphore_create(0);
     return self;
 }
 
@@ -50,13 +52,19 @@ static dispatch_once_t gUnpairedObservationOnceToken;
 
 - (void)main {
     while (!self.cancelled) {
-        [self discoverHost];
+        // NSOperation's outer pool lives for this whole polling operation.
+        @autoreleasepool {
+            [self discoverHost];
+        }
         if (!self.cancelled) {
-            // Keep cancellation responsive even between discovery cycles.
-            for (float waited = 0; waited < POLL_RATE && !self.cancelled; waited += 0.1f)
-                [NSThread sleepForTimeInterval:0.1];
+            dispatch_semaphore_wait(_pollWake, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(POLL_RATE * NSEC_PER_SEC)));
         }
     }
+}
+
+- (void)cancel {
+    [super cancel];
+    dispatch_semaphore_signal(_pollWake);
 }
 
 - (NSArray*) getHostAddressList {

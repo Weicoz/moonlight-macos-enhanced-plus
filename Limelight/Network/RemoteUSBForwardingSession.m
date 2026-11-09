@@ -355,7 +355,8 @@ static id MLRemoteUSBJSONObjectFromData(NSData *data, NSError **errorOut) {
 }
 
 - (void)stop {
-    dispatch_sync(self.workerQueue, ^{
+    // Device enumeration and exporter shutdown can block on a USB driver.
+    dispatch_async(self.workerQueue, ^{
         self.state = MLRemoteUSBForwardingStateStopping;
         [self.tunnel stop];
         self.tunnel = nil;
@@ -365,7 +366,9 @@ static id MLRemoteUSBJSONObjectFromData(NSData *data, NSError **errorOut) {
 }
 
 - (void)dealloc {
-    [self stop];
+    // Queued work retains the session; dealloc can run on its worker queue.
+    [self.tunnel stop];
+    [self stopExporterLocked];
 }
 
 @end

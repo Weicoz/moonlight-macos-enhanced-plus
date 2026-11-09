@@ -53,6 +53,7 @@ typedef NS_ENUM(NSInteger, MLRemoteUSBForwardingState) {
                            token:(NSString *)token
                       serverCert:(NSData *)serverCert
                        completion:(void (^)(NSError * _Nullable error))completion;
+// Enqueues shutdown without waiting for USB drivers or the exporter.
 - (void)stop;
 
 @end

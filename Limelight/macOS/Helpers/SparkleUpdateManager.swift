@@ -4,15 +4,9 @@ import Combine
 
 /// Mirrors only this product's signed release archives, never arbitrary URLs.
 enum UpdateSourcePolicy {
-  // The signed appcast ships as an asset of each release; CNB mirrors GitHub
-  // releases, so the same "latest release" path works on both. The feed
-  // branch remains last for builds that predate the release-asset feeds.
-  static let githubFeed = "https://github.com/skyhua0224/moonlight-macos-enhanced/releases/latest/download/appcast.xml"
-  static let feeds = [
-    githubFeed,
-    "https://cnb.cool/AlkaidLab/moonlight-macos-enhanced-release/-/releases/latest/download/appcast.xml",
-    "https://raw.githubusercontent.com/skyhua0224/moonlight-macos-enhanced/refs/heads/chore/update-feed/appcast.xml",
-  ]
+  // This fork accepts only its own signed releases.
+  static let githubFeed = "https://github.com/Weicoz/moonlight-macos-enhanced-plus/releases/latest/download/appcast.xml"
+  static let feeds = [githubFeed]
 
   static func metadataVersion(_ tag: String) -> String {
     let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
@@ -23,20 +17,8 @@ enum UpdateSourcePolicy {
   }
 
   static func mirrorURL(for url: URL?) -> URL? {
-    guard let url, url.scheme == "https", url.host?.lowercased() == "github.com",
-      url.user == nil, url.password == nil, url.port == nil,
-      url.query == nil, url.fragment == nil
-    else { return nil }
-    let parts = url.pathComponents.filter { $0 != "/" }
-    guard parts.count == 6,
-      parts[0] == "skyhua0224", parts[1] == "moonlight-macos-enhanced",
-      parts[2] == "releases", parts[3] == "download",
-      parts[4].range(of: #"^v[0-9]+\.[0-9]+\.[0-9]+(?:-(?:rc|alpha|beta)[.-][0-9]+)?$"#,
-                     options: .regularExpression) != nil,
-      ["Moonlight-macOS-Enhanced-arm64.dmg", "Moonlight-macOS-Enhanced-x86_64.dmg",
-       "Moonlight-macOS-Enhanced-universal.dmg"].contains(parts[5])
-    else { return nil }
-    return URL(string: "https://cnb.cool/AlkaidLab/moonlight-macos-enhanced-release/-/releases/download/\(parts[4])/\(parts[5])")
+    // No signed mirror exists for this fork.
+    return nil
   }
 
   static func isCancelled(_ error: Error) -> Bool {

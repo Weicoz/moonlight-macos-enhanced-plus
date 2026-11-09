@@ -9,16 +9,30 @@ on:
     branches: [master, main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  regression:
+    name: Regression checks
+    runs-on: xcode-27
+    steps:
+    - uses: actions/checkout@v6
+    - name: Check lifecycle and input regressions
+      run: |
+        python3 tests/resource-lifecycle/run.py
+        python3 tests/window-cleanup/run.py
+        python3 tests/startup-endpoint/run.py
+        python3 tests/capslock/run.py
+
   build_arch:
     name: Build ${{ matrix.variant }}
+    needs: regression
     runs-on: ${{ matrix.runner }}
     env:
-      # The EdDSA public key is safe to publish. Keep a repository fallback so
-      # a missing optional secret cannot silently disable Sparkle in release
-      # artifacts. The private signing key remains outside Git.
-      SPARKLE_ED_PUBLIC_KEY: ${{ secrets.SPARKLE_ED_PUBLIC_KEY || '0oUtFGXxgldrfua5x34b0mT6RvUQ6eI+xCJiddymRX4=' }}
-      SPARKLE_FEED_URL: https://github.com/skyhua0224/moonlight-macos-enhanced/releases/latest/download/appcast.xml
+      # Automatic installation stays disabled until this fork has its own signing key.
+      SPARKLE_ED_PUBLIC_KEY: ${{ secrets.SPARKLE_ED_PUBLIC_KEY }}
+      SPARKLE_FEED_URL: https://github.com/Weicoz/moonlight-macos-enhanced-plus/releases/latest/download/appcast.xml
 
     strategy:
       fail-fast: false
@@ -70,10 +84,10 @@ jobs:
       shell: bash
       run: |
         marketing_version=1.3.9
-        display_version=1.3.9
+        display_version=1.3.9-plus.1
         update_channel=stable
         if [[ "$GITHUB_REF_TYPE" == tag ]]; then
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)(-(rc|beta|alpha)[.-][0-9]+)?$ ]]; then
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)(-(rc|beta|alpha|plus)[.-][0-9]+)?$ ]]; then
             echo "Unsupported release tag: $GITHUB_REF_NAME" >&2
             exit 1
           fi
@@ -84,7 +98,7 @@ jobs:
         echo "RELEASE_MARKETING_VERSION=$marketing_version" >> "$GITHUB_ENV"
         echo "RELEASE_DISPLAY_VERSION=$display_version" >> "$GITHUB_ENV"
         echo "UPDATE_CHANNEL=$update_channel" >> "$GITHUB_ENV"
-        echo "RELEASE_BUILD_NUMBER=$((1335 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+        echo "RELEASE_BUILD_NUMBER=$((7000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
 
     - name: Build ${{ matrix.display_name }} package
       run: |
@@ -424,7 +438,7 @@ jobs:
         # Publish only after signing the final archives with the local EdDSA key.
         # Never replace a published archive: its appcast signature binds its bytes.
         draft: true
-        prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') || contains(github.ref, '-rc') }}
+        prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') || contains(github.ref, '-rc') || contains(github.ref, '-plus') }}
         files: |
           dist/Moonlight-macOS-Enhanced-x86_64.dmg
           dist/Moonlight-macOS-Enhanced-arm64.dmg

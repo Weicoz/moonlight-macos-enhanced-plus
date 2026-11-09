@@ -144,7 +144,7 @@ struct AboutSettingsPage: View {
             .foregroundStyle(.secondary)
         }
         SettingsRow(title: "Project") {
-          Link("Moonlight macOS Enhanced", destination: URL(string: "https://github.com/skyhua0224/moonlight-macos-enhanced")!)
+          Link("Moonlight macOS Enhanced Plus", destination: URL(string: "https://github.com/Weicoz/moonlight-macos-enhanced-plus")!)
         }
         SettingsRow(title: "License") {
           Text("GPL-3.0")
@@ -176,7 +176,7 @@ struct UpdatesSettingsPage: View {
         HStack {
           Spacer()
           Button(languageManager.localize("Check for Updates")) {
-            NSWorkspace.shared.open(URL(string: "https://github.com/skyhua0224/moonlight-macos-enhanced/releases")!)
+            NSWorkspace.shared.open(URL(string: "https://github.com/Weicoz/moonlight-macos-enhanced-plus/releases")!)
           }
           .controllerButtonStyle(.borderedProminent)
           .controlSize(.small)
@@ -261,11 +261,6 @@ final class ReleaseUpdateChecker: ObservableObject {
   @Published private(set) var sourceURL: URL?
   @Published private(set) var errorMessage = ""
 
-  private let sources = [
-    "https://www.alkaidlab.com/release-metadata/moonlight-macos-enhanced.json",
-    "https://www.alkaidlab.cn/release-metadata/moonlight-macos-enhanced.json",
-  ]
-
   func check() {
     guard state != .checking else { return }
     state = .checking
@@ -273,38 +268,16 @@ final class ReleaseUpdateChecker: ObservableObject {
     Task {
       if let githubRelease = await fetchGitHubRelease() {
         release = githubRelease
-        sourceURL = URL(string: "https://api.github.com/repos/skyhua0224/moonlight-macos-enhanced/releases")
+        sourceURL = URL(string: "https://api.github.com/repos/Weicoz/moonlight-macos-enhanced-plus/releases")
         state = isNewer(githubRelease.version, than: appVersion) ? .updateAvailable : .upToDate
         return
       }
-      for rawSource in sources {
-        guard let source = URL(string: rawSource) else { continue }
-        do {
-          var request = URLRequest(url: source)
-          request.timeoutInterval = 15
-          let (data, response) = try await URLSession.shared.data(for: request)
-          guard let response = response as? HTTPURLResponse, (200..<300).contains(response.statusCode)
-          else { throw URLError(.badServerResponse) }
-          let document = try JSONDecoder().decode(ReleaseMetadataDocument.self, from: data)
-          let keys = acceptsPrereleases ? ["latest", "pre-latest"] : ["latest"]
-          let channels = keys.compactMap { document.channels[$0] ?? nil }
-          if let channel = channels.max(by: { isNewer($1.version, than: $0.version) }) {
-            release = channel
-            sourceURL = source
-            state = isNewer(channel.version, than: appVersion) ? .updateAvailable : .upToDate
-            return
-          }
-        } catch {
-          errorMessage = error.localizedDescription
-        }
-      }
-
       state = .unavailable
     }
   }
 
   private func fetchGitHubRelease() async -> ReleaseChannel? {
-    guard let url = URL(string: "https://api.github.com/repos/skyhua0224/moonlight-macos-enhanced/releases?per_page=20") else {
+    guard let url = URL(string: "https://api.github.com/repos/Weicoz/moonlight-macos-enhanced-plus/releases?per_page=20") else {
       return nil
     }
 
@@ -429,7 +402,7 @@ enum ThirdPartyNotices {
   static let usbipdcppAttribution =
     "This product uses usbipdcpp (https://github.com/yunsmall/usbipdcpp), licensed under LGPLv3."
   static let usbipdcppURL = URL(string: "https://github.com/yunsmall/usbipdcpp")!
-  static let sourceURL = URL(string: "https://github.com/skyhua0224/moonlight-macos-enhanced")!
+  static let sourceURL = URL(string: "https://github.com/Weicoz/moonlight-macos-enhanced-plus")!
 
   static func openLicenses() {
     guard let url = Bundle.main.url(forResource: "ThirdPartyLicenses", withExtension: "txt") else { return }

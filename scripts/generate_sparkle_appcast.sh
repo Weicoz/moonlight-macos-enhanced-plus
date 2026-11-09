@@ -7,7 +7,7 @@ set -eu
 : "${SPARKLE_DOWNLOAD_PREFIX:?Set SPARKLE_DOWNLOAD_PREFIX to the GitHub release asset URL prefix}"
 
 case "$SPARKLE_DOWNLOAD_PREFIX" in
-  https://github.com/skyhua0224/moonlight-macos-enhanced/releases/download/v*) ;;
+  https://github.com/Weicoz/moonlight-macos-enhanced-plus/releases/download/v*) ;;
   *) printf '%s\n' 'The update archive must use this product’s GitHub release URL.' >&2; exit 1 ;;
 esac
 

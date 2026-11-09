@@ -1,0 +1,7 @@
+# 资源生命周期回归检查
+
+运行 `python3 tests/resource-lifecycle/run.py`，需要 macOS 与 Xcode Command Line Tools。
+
+检查提取并编译生产方法，覆盖发现主机轮询的临时对象释放、轮询等待时取消、开始前取消，以及 USB worker 忙碌时 stop 返回、停止顺序和 worker 内再次停止。原上游代码在两项核心断言失败，修复后通过。
+
+适配器只模拟设备队列与发现任务，不连接主机、不修改网络接口、不访问真实 USB。物理设备故障和实际菜单退出单独验收。
