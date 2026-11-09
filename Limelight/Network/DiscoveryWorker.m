@@ -392,10 +392,10 @@ static dispatch_once_t gUnpairedObservationOnceToken;
         }
 
         if (autoConnectionMode && !isStreamingThisHost) {
-            if (firstOnlineAddress != nil) {
-                _host.activeAddress = firstOnlineAddress;
-            } else if (bestAddress != nil) {
-                _host.activeAddress = bestAddress;
+            // Keep a working route; the latency switch below owns the cooldown.
+            BOOL currentRouteOnline = _host.activeAddress.length > 0 && [states[_host.activeAddress] boolValue];
+            if (!currentRouteOnline && (bestAddress != nil || firstOnlineAddress != nil)) {
+                _host.activeAddress = bestAddress ?: firstOnlineAddress;
             }
         } else if (!autoConnectionMode && !isStreamingThisHost && selectedConnectionMethod.length > 0) {
             // Keep the user's selected route even when it is currently down.

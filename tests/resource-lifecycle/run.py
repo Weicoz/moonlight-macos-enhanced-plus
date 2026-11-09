@@ -2,6 +2,7 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
 
 root = Path(__file__).resolve().parents[2]
 discovery = (root / "Limelight/Network/DiscoveryWorker.m").read_text()
@@ -138,3 +139,5 @@ with tempfile.TemporaryDirectory(prefix="moonlight-resource-test-") as tmp:
         subprocess.run(["clang", "-fobjc-arc" if arc else "-fno-objc-arc", "-fblocks",
                         "-framework", "Foundation", str(path), "-o", str(binary)], check=True)
         subprocess.run([str(binary)], check=True, timeout=8)
+
+subprocess.run([sys.executable, str(root / "tests/resource-lifecycle/routes.py")], check=True)

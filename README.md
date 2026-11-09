@@ -3,6 +3,7 @@
 这是 [SkyHua 原生版](https://github.com/skyhua0224/moonlight-macos-enhanced) 的维护分支，基于 **1.3.9 RC7**，当前补丁版本 **1.3.9-plus.1**。
 
 - 修复长期主机轮询积累临时对象，减少轮询等待期间的定时唤醒；取消操作立即唤醒等待。
+- 发现主机时保留仍可用的当前地址，避免每轮重置地址绕过切换冷却期。
 - USB 停止操作改为异步排队，避免设备枚举或辅助进程阻塞退出界面。
 - 更新来源限定为本 fork；未配置本 fork 的 Sparkle 签名公钥前，自动安装更新保持禁用。
 - 构建保留 Apple Silicon、Intel 和 Universal；验证范围、构建方式和同步上游流程见 [维护记录](docs/plus-maintenance.md)。
