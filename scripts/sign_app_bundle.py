@@ -40,6 +40,11 @@ def main() -> None:
         if path.is_symlink():
             continue
         if path.is_dir() and path.suffix in {'.app', '.xpc', '.appex', '.framework'}:
+            if path.suffix == '.appex':
+                extension_info = plistlib.loads((path / 'Contents/Info.plist').read_bytes())
+                for key in ('CFBundleVersion', 'CFBundleShortVersionString'):
+                    if extension_info.get(key) != info.get(key):
+                        raise SystemExit(f'Extension {path.name} has a mismatched {key}')
             bundles.append(path)
         elif path.is_file() and path.resolve() != main_binary:
             with path.open('rb') as stream:
