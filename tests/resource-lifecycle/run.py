@@ -141,3 +141,5 @@ with tempfile.TemporaryDirectory(prefix="moonlight-resource-test-") as tmp:
         subprocess.run([str(binary)], check=True, timeout=8)
 
 subprocess.run([sys.executable, str(root / "tests/resource-lifecycle/routes.py")], check=True)
+
+subprocess.run([sys.executable, str(root / "tests/resource-lifecycle/stability.py")], check=True)

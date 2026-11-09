@@ -21,6 +21,8 @@
     TemporaryHost* _host;
     NSString* _uniqueId;
     dispatch_semaphore_t _pollWake;
+    NSString *_preferredAddressCandidate;
+    NSUInteger _preferredAddressObservations;
 }
 
 static const float POLL_RATE = 2.0f; // Poll every 2 seconds
@@ -29,6 +31,7 @@ static NSMutableDictionary<NSString*, NSMutableDictionary<NSString*, NSNumber*>*
 static NSObject *gAddressCooldownLock = nil;
 static dispatch_once_t gAddressCooldownOnceToken;
 static const double AUTO_SWITCH_PING_IMPROVEMENT_MS = 20.0;
+static const NSUInteger AUTO_SWITCH_CONFIRMATIONS = 3;
 static const NSTimeInterval AUTO_SWITCH_COOLDOWN_SEC = 30.0;
 static NSMutableDictionary<NSString*, NSNumber*> *gAutoSwitchCooldownByHost = nil;
 static NSObject *gAutoSwitchCooldownLock = nil;
@@ -415,49 +418,49 @@ static dispatch_once_t gUnpairedObservationOnceToken;
         }
     }
 
-    // Auto-switch to a significantly lower-latency address (>= 20ms improvement)
-    if (autoConnectionMode && receivedResponse && !isStreamingThisHost && bestAddress != nil && _host.activeAddress != nil) {
-        if (![bestAddress isEqualToString:_host.activeAddress]) {
-            NSNumber *currentLatency = latencies[_host.activeAddress];
-            NSNumber *bestLatency = latencies[bestAddress];
-            if (currentLatency && bestLatency && (currentLatency.doubleValue - bestLatency.doubleValue) >= AUTO_SWITCH_PING_IMPROVEMENT_MS) {
-                // Thread-safe initialization using dispatch_once
-                dispatch_once(&gAutoSwitchCooldownOnceToken, ^{
-                    gAutoSwitchCooldownLock = [[NSObject alloc] init];
-                    gAutoSwitchCooldownByHost = [NSMutableDictionary dictionary];
-                });
+    // Auto-switch to a significantly lower-latency address only after stable measurements.
+    NSString *candidateAddress = nil;
+    if (autoConnectionMode && receivedResponse && !isStreamingThisHost && bestAddress != nil && _host.activeAddress != nil &&
+        ![bestAddress isEqualToString:_host.activeAddress]) {
+        NSNumber *currentLatency = latencies[_host.activeAddress];
+        NSNumber *bestLatency = latencies[bestAddress];
+        if (currentLatency && bestLatency &&
+            (currentLatency.doubleValue - bestLatency.doubleValue) >= AUTO_SWITCH_PING_IMPROVEMENT_MS) {
+            candidateAddress = bestAddress;
+        }
+    }
+    if (![_preferredAddressCandidate isEqualToString:candidateAddress]) {
+        _preferredAddressCandidate = [candidateAddress copy];
+        _preferredAddressObservations = 0;
+    }
+    if (candidateAddress == nil) {
+        _preferredAddressObservations = 0;
+    } else {
+        _preferredAddressObservations = MIN(_preferredAddressObservations + 1, AUTO_SWITCH_CONFIRMATIONS);
+    }
+    if (_preferredAddressObservations >= AUTO_SWITCH_CONFIRMATIONS) {
+        dispatch_once(&gAutoSwitchCooldownOnceToken, ^{
+            gAutoSwitchCooldownLock = [[NSObject alloc] init];
+            gAutoSwitchCooldownByHost = [NSMutableDictionary dictionary];
+        });
 
-                NSString *hostUUID = _host.uuid ?: @"";
-                NSTimeInterval now = CFAbsoluteTimeGetCurrent();
-                BOOL canSwitch = YES;
-                @synchronized (gAutoSwitchCooldownLock) {
-                    NSNumber *nextAllowed = gAutoSwitchCooldownByHost[hostUUID];
-                    if (nextAllowed && now < nextAllowed.doubleValue) {
-                        canSwitch = NO;
-                    } else if (hostUUID.length > 0) {
-                        gAutoSwitchCooldownByHost[hostUUID] = @(now + AUTO_SWITCH_COOLDOWN_SEC);
-                    }
-                }
-
-                if (canSwitch) {
-                    NSString *oldAddress = _host.activeAddress;
-                    _host.activeAddress = bestAddress;
-                    Log(LOG_I, @"Auto-switched %@ from %@ (%.0fms) to %@ (%.0fms)", _host.name, oldAddress, currentLatency.doubleValue, bestAddress, bestLatency.doubleValue);
-
-                    NSString *uuidForNotification = _host.uuid ?: @"";
-                    NSString *hostNameForNotification = _host.name ?: @"";
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        [[NSNotificationCenter defaultCenter] postNotificationName:@"HostAutoAddressSwitched" object:nil userInfo:@{
-                            @"uuid": uuidForNotification,
-                            @"hostName": hostNameForNotification,
-                            @"oldAddress": oldAddress ?: @"",
-                            @"newAddress": bestAddress ?: @"",
-                            @"oldLatency": currentLatency ?: @(-1),
-                            @"newLatency": bestLatency ?: @(-1)
-                        }];
-                    });
-                }
+        NSString *hostUUID = _host.uuid ?: @"";
+        NSTimeInterval now = CFAbsoluteTimeGetCurrent();
+        BOOL canSwitch = YES;
+        @synchronized (gAutoSwitchCooldownLock) {
+            NSNumber *nextAllowed = gAutoSwitchCooldownByHost[hostUUID];
+            if (nextAllowed && now < nextAllowed.doubleValue) {
+                canSwitch = NO;
+            } else if (hostUUID.length > 0) {
+                gAutoSwitchCooldownByHost[hostUUID] = @(now + AUTO_SWITCH_COOLDOWN_SEC);
             }
+        }
+        if (canSwitch) {
+            NSString *oldAddress = _host.activeAddress;
+            _host.activeAddress = candidateAddress;
+            Log(LOG_I, @"Auto-switched %@ from %@ (%.0fms) to %@ (%.0fms)",
+                _host.name, oldAddress, [latencies[oldAddress] doubleValue],
+                candidateAddress, [latencies[candidateAddress] doubleValue]);
         }
     }
 

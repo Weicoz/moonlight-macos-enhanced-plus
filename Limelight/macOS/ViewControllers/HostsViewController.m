@@ -78,7 +78,6 @@
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mainSearchTextChanged:) name:@"MoonlightMainSearchTextChanged" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshHostDiscovery:) name:@"MoonlightRequestHostDiscovery" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleDiscoveryPreferencesChanged:) name:@"MoonlightDiscoveryPreferencesChanged" object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleHostAutoAddressSwitched:) name:@"HostAutoAddressSwitched" object:nil];
 }
 
 - (void)installContentSearchField {
@@ -141,53 +140,6 @@
             }
         });
     });
-}
-
-- (void)handleHostAutoAddressSwitched:(NSNotification *)note {
-    if (!self.view.window || !self.view.window.isVisible) {
-        return;
-    }
-
-    NSString *uuid = note.userInfo[@"uuid"];
-    if (uuid.length == 0) {
-        return;
-    }
-
-    TemporaryHost *targetHost = nil;
-    @synchronized(self.hosts) {
-        for (TemporaryHost *host in self.hosts) {
-            if ([host.uuid isEqualToString:uuid]) {
-                targetHost = host;
-                break;
-            }
-        }
-    }
-
-    if (!targetHost) {
-        return;
-    }
-
-    NSDictionary *settings = [SettingsClass getSettingsFor:uuid];
-    NSString *connectionMethod = settings[@"connectionMethod"];
-    if (connectionMethod.length > 0 && ![connectionMethod isEqualToString:@"Auto"]) {
-        return;
-    }
-
-    NSString *oldAddress = note.userInfo[@"oldAddress"] ?: @"";
-    NSString *newAddress = note.userInfo[@"newAddress"] ?: @"";
-    NSNumber *oldLatency = note.userInfo[@"oldLatency"] ?: @(-1);
-    NSNumber *newLatency = note.userInfo[@"newLatency"] ?: @(-1);
-
-    NSString *title = NSLocalizedString(@"Auto Address Switched Title", @"Auto address switched alert title");
-    NSString *format = NSLocalizedString(@"Auto Address Switched Message", @"Auto address switched alert message");
-    NSString *message = [NSString stringWithFormat:format,
-                         targetHost.displayName ?: @"",
-                         oldAddress,
-                         newAddress,
-                         oldLatency.doubleValue,
-                         newLatency.doubleValue];
-
-    [AlertPresenter displayAlert:NSAlertStyleInformational title:title message:message window:self.view.window completionHandler:nil];
 }
 
 - (void)viewWillAppear {

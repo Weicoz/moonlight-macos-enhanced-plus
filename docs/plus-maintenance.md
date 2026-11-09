@@ -5,7 +5,7 @@
 - 上游：`https://github.com/skyhua0224/moonlight-macos-enhanced.git`。
 - 基线：`c4dd84da`，1.3.9 RC7。
 - 本分支：`https://github.com/Weicoz/moonlight-macos-enhanced-plus`。
-- 当前版本：`1.3.9-plus.1`。这是基于 RC7 的补丁版，不代表上游已发布 1.3.9 最终版。
+- 当前版本：`1.3.9-plus.2`。这是基于 RC7 的补丁版，不代表上游已发布 1.3.9 最终版。
 - 保留上游视频渲染、编码、配对协议和授权。系统代理、路由、AWDL 配置及主机配置不属于本次修改范围。
 
 ## 修复和验证
@@ -17,6 +17,14 @@
 原来每 0.1 秒检查取消，2 秒内最多唤醒 20 次。现在通过 semaphore 等待下次轮询，取消时主动唤醒；轮询间隔保持 2 秒。这只减少等待期间的唤醒，不代表应用总 CPU 下降 95%。
 
 实际界面测试还发现重复的自动切换地址提示。原发现逻辑在每轮把可用的当前地址重置为地址列表首项，绕过后面的 30 秒切换冷却期。现在保留仍在线的当前地址，失效时选可用的最佳地址；低延迟切换继续使用原有阈值和冷却期。手动地址和正在串流的地址保持原有规则，系统网络配置未变。
+
+### 多地址提示和测速抖动（plus.2）
+
+plus.1 仍会在单轮延迟改善超过 20ms 时切换，并为每次切换排入一个模态确认窗口。同一主机的多张网卡、VPN 地址及 `.local` 名称同时可用时，测量波动会反复触发切换和提示。
+
+plus.2 要求同一候选地址连续三轮改善至少 20ms，再通过原有 30 秒冷却期检查。候选改变、改善不足、响应失败、手动模式及正在串流都会清除连续确认记录。当前地址失效时的可用地址回退仍立即执行。
+
+自动地址优化改为后台行为，保留诊断日志和设置中的地址/延迟信息，移除该信息弹窗的生产者和观察者。连接失败等错误提示保留。`stability.py` 执行生产切换逻辑，验证抖动抑制、连续确认、冷却期、重置条件及无模态通知。
 
 ### USB 停止和退出
 
@@ -58,7 +66,7 @@ xcodebuild -project Moonlight.xcodeproj -scheme 'Moonlight for macOS' \
   -destination 'platform=macOS,arch=arm64' -jobs 2 \
   ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGN_IDENTITY=- \
   CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
-  BUILD_NUMBER=7001 UPDATE_DISPLAY_VERSION=1.3.9-plus.1 build
+  BUILD_NUMBER=7002 UPDATE_DISPLAY_VERSION=1.3.9-plus.2 build
 python3 scripts/sign_app_bundle.py build/Build/Products/Release/MoonlightEnhanced.app \
   --entitlements Moonlight.entitlements \
   --extension-entitlements FileProviderExtension/FileProvider.entitlements

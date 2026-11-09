@@ -160,7 +160,6 @@ static NSString * const MLSunshinePerAppTopologyDefaultsPrefix = @"Moonlight.Sun
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(languageChanged:) name:@"LanguageChanged" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mainSearchTextChanged:) name:@"MoonlightMainSearchTextChanged" object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleHostAutoAddressSwitched:) name:@"HostAutoAddressSwitched" object:nil];
 
     // Subscribe to streaming state changes
     __weak typeof(self) weakSelf = self;
@@ -304,33 +303,6 @@ static NSString * const MLSunshinePerAppTopologyDefaultsPrefix = @"Moonlight.Sun
     if (self.host.state != StateOffline && self.apps.count == 0) {
         [self discoverAppsForHost:self.host];
     }
-}
-
-- (void)handleHostAutoAddressSwitched:(NSNotification *)note {
-    NSString *uuid = note.userInfo[@"uuid"];
-    if (uuid == nil || ![uuid isEqualToString:self.host.uuid]) {
-        return;
-    }
-
-    if (!self.view.window || !self.view.window.isVisible) {
-        return;
-    }
-
-    NSString *oldAddress = note.userInfo[@"oldAddress"] ?: @"";
-    NSString *newAddress = note.userInfo[@"newAddress"] ?: @"";
-    NSNumber *oldLatency = note.userInfo[@"oldLatency"] ?: @(-1);
-    NSNumber *newLatency = note.userInfo[@"newLatency"] ?: @(-1);
-
-    NSString *title = NSLocalizedString(@"Auto Address Switched Title", @"Auto address switched alert title");
-    NSString *format = NSLocalizedString(@"Auto Address Switched Message", @"Auto address switched alert message");
-    NSString *message = [NSString stringWithFormat:format,
-                         self.host.displayName ?: @"",
-                         oldAddress,
-                         newAddress,
-                         oldLatency.doubleValue,
-                         newLatency.doubleValue];
-
-    [AlertPresenter displayAlert:NSAlertStyleInformational title:title message:message window:self.view.window completionHandler:nil];
 }
 
 - (void)requestHostRefresh {
